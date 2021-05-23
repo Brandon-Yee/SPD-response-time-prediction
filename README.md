@@ -33,6 +33,7 @@ Thinking a feedforward network. Prediction target: 'Elasped Time before response
 - Visualization of precint locations and police precint/sector/beat
 - Coloring of precint/sector/beat based on average calls per unit of time
 - Coloring of precint/sector/beat based on average response times overall
+- Plot of number of calls over time
 
 ## Timeline
 - Final Project Report due: Thursday, 10 June at 2pm

@@ -26,14 +26,24 @@ A deep neural network approach to predicting Seattle police call response time.
 
 - Beat: Beat where the call originated. All Beats roll up to Sectors.
 
-### Network Design:
+### Network Design Task:
 Thinking a feedforward network. Prediction target: 'Elasped Time before response' (time difference between 'Arrived Time' and 'Original Time Queued'.
+
+- Train encoding for 'Initial Call Type' and again for 'Final Call Type'
+
+### Data to use:
+- 25 Jan 2018 to present (change in police beats went into effect on 24 Jan 2018)
 
 ## Data analysis tasks
 - Visualization of precint locations and police precint/sector/beat
 - Coloring of precint/sector/beat based on average calls per unit of time
 - Coloring of precint/sector/beat based on average response times overall
 - Plot of number of calls over time
+
+## Data prep tasks
+- Reduce down to data from 25 Jan 2018 to present
+- Create train, validation, test sets
+- Create pytorch data loaders
 
 ## Timeline
 - Final Project Report due: Thursday, 10 June at 2pm

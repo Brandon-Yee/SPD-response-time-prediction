@@ -2,11 +2,82 @@
 """
 Code to conduct data analysis of Seattle 911 call data.
 """
+
 import pandas as pd
 import geopandas as gpd
+import torch
+import torch.nn as nn
 
 
 def main():
+    pass
+
+
+class SPDCallDataset(torch.utils.data.Dataset):
+    """
+    OBJECT DESCRIPTION
+    Map-style PyTorch Dataset
+    FIELDS
+    file_path - str: combined file path and file name of the truncated and
+        processed .csv file.
+    data - pd.DataFrame: DataFrame of features.
+    y - pd.Series, dtype=int: Series of response times in seconds.
+    """
+    def __init__(self, file_path):
+        """
+        BEHAVIOR
+        Instantiates the dataset.
+        PARAMETERS
+        file_path - str: File path to the truncated and processed .csv file.
+        RETURNS
+        n/a
+        """
+        self.file_path = file_path
+        date_cols = ['Original Time Queued', 'Arrived Time']
+        data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
+        data_2018.reset_index(inplace=True)
+        self.y = data_2018['response_time'].copy()
+        self.data = data_2018.drop(labels='response_time')
+
+    def __getitem__(self, idx):
+        """
+        BEHAVIOR
+        Returns a sample in the dataset.
+        PARAMETERS
+        idx - int: Index of the dataset to return.
+        RETURNS
+        tuple: The data features in the form of a pd.Series are the 0-index
+            of the tuple and the target value in the form of an integer is
+            the 1-index of the tuple.
+        """
+        return self.data.loc[idx], self.y.loc[idx]
+
+    def __len__(self):
+        """
+        BEHAVIOR
+        Provides the number of samples in the dataset.
+        PARAMETERS
+        RETURNS
+        """
+        return len(self.data)
+
+
+def load_data(file_path):
+    """
+    BEHAVIOR
+    Loads our cleaned dataset into working memory in the form of a Pandas
+    DataFrame, and provides a train/val/test split.
+    PARAMETERS
+    file_path - str: File path to the cleaned .csv that was created by the
+        'create_data' function defined below.
+    RETURNS
+    data - pd.DataFrame:
+    partitions - Dict: Train/val/test partitions. The keys are strings:
+        'train', 'val', and 'test', with the corresponding values as lists
+        of integers indicating the corresponding indexes for that partition.
+    """
+    # TODO: instantiates dataframe in working memory and returns dictionary of
+    #       partitions
     pass
 
 
@@ -14,9 +85,10 @@ def create_data(file_path):
     """
     BEHAVIOR
     Generates our base dataset from the source .csv in the form of a Pandas
-    DataFrame. Only provides data from 25 Jan 2018 to present because of the
-    precinct change that went into effect on 24 Jan 2018. Converts time
-    columns into datetime format and adds a column for response time.
+    DataFrame and also saves it as a new .csv. Only provides data from 
+    25 Jan 2018 to present because of the precinct change that went into
+    effect on 24 Jan 2018. Converts time columns into datetime format and
+    adds a column for response time (in seconds).
     PARAMETERS
     file_path - str: file path, including file name to the base .csv data.
     RETURNS
@@ -33,8 +105,14 @@ def create_data(file_path):
 
     cutoff = pd.Timestamp(year=2018, month=1, day=25)
     data_2018 = data[data['Original Time Queued'] >= cutoff].copy()
-    data_2018['response_time'] = data_2018['Arrived Time'] \
-        - data_2018['Original Time Queued']
+    time_delta = data_2018['Arrived Time'] - data_2018['Original Time Queued']
+
+    # translate the pandas timedelta dtype into an integer representation
+    # in the unit of seconds and add to the DataFrame
+    data_2018['response_time'] = time_delta.apply(lambda x: x.seconds)
+
+    data_2018.reset_index(inplace=True)
+    data_2018.to_csv(r'data/Call_Data_2018.csv')
     return data_2018
 
 

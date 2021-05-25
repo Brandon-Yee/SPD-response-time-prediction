@@ -1,5 +1,7 @@
 # SPD-response-time-prediction
 A deep neural network approach to predicting Seattle police call response time.
+- Data source: https://data.seattle.gov/Public-Safety/Call-Data/33kz-ixgy
+- Seattle Police Beats shape file data: https://data-seattlecitygis.opendata.arcgis.com/datasets/seattle-police-beats-2018-present?geometry=-123.384%2C47.454%2C-121.298%2C47.778
 
 ## Thoughts on initial design:
 ### Features in the dataset:

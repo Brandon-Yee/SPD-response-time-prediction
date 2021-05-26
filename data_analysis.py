@@ -2,15 +2,20 @@
 """
 Code to conduct data analysis of Seattle 911 call data.
 """
-
+import math
+import numpy as np
 import pandas as pd
 import geopandas as gpd
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import shapefile
 
 
 def main():
-    pass
+    beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
+    data_2018 = load_data(r'data/Call_Data_2018.csv')
+    plot_beats(beats, data_2018)
 
 
 class SPDCallDataset(torch.utils.data.Dataset):
@@ -23,11 +28,13 @@ class SPDCallDataset(torch.utils.data.Dataset):
     data - pd.DataFrame: DataFrame of features.
     y - pd.Series, dtype=int: Series of response times in seconds.
     """
-    def __init__(self, file_path):
+    def __init__(self, idxs, file_path):
         """
         BEHAVIOR
-        Instantiates the dataset.
+        Instantiates the dataset partition.
         PARAMETERS
+        idxs - 1D np.ndarray: Array of index values that will represent the
+            partition.
         file_path - str: File path to the truncated and processed .csv file.
         RETURNS
         n/a
@@ -35,22 +42,23 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.file_path = file_path
         date_cols = ['Original Time Queued', 'Arrived Time']
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
-        data_2018.reset_index(inplace=True)
-        self.y = data_2018['response_time'].copy()
-        self.data = data_2018.drop(labels='response_time')
+
+        self.y = data_2018.loc[idxs, 'response_time'].copy()
+        data_2018.drop(columns='response_time', inplace=True)
+        self.data = data_2018.loc[idxs, :].copy()
 
     def __getitem__(self, idx):
         """
         BEHAVIOR
-        Returns a sample in the dataset.
+        Returns a sample in the dataset partition.
         PARAMETERS
-        idx - int: Index of the dataset to return.
+        idx - int: Index of the dataset partition to return.
         RETURNS
-        tuple: The data features in the form of a pd.Series are the 0-index
+        tuple: The data features in the form of a pd.Series is the 0-index
             of the tuple and the target value in the form of an integer is
             the 1-index of the tuple.
         """
-        return self.data.loc[idx], self.y.loc[idx]
+        return self.data.iloc[idx], self.y.iloc[idx]
 
     def __len__(self):
         """
@@ -62,23 +70,51 @@ class SPDCallDataset(torch.utils.data.Dataset):
         return len(self.data)
 
 
-def load_data(file_path):
+def gen_partition_idxs(file_path, pct_test=0.15, pct_val=0.15, seed=21):
     """
     BEHAVIOR
-    Loads our cleaned dataset into working memory in the form of a Pandas
-    DataFrame, and provides a train/val/test split.
+    Generates the indexes for each partition of the data.
     PARAMETERS
     file_path - str: File path to the cleaned .csv that was created by the
         'create_data' function defined below.
     RETURNS
-    data - pd.DataFrame:
     partitions - Dict: Train/val/test partitions. The keys are strings:
-        'train', 'val', and 'test', with the corresponding values as lists
+        'train', 'val', and 'test', with the corresponding values as 1D arrays
         of integers indicating the corresponding indexes for that partition.
     """
-    # TODO: instantiates dataframe in working memory and returns dictionary of
-    #       partitions
-    pass
+    default_rng = np.random.default_rng(seed=seed)
+    data_2018 = pd.read_csv(file_path)
+
+    num_samples = len(data_2018)
+    num_test = int(math.floor(pct_test * num_samples))
+    num_val = int(math.floor(pct_val * num_samples))
+
+    partitions = {}
+    all_idxs = np.arange(num_samples)
+    partitions['test'] = default_rng.choice(all_idxs, size=num_test,
+                                            replace=False)
+    t_v_idxs = np.setdiff1d(all_idxs, partitions['test'], assume_unique=True)
+    partitions['val'] = default_rng.choice(t_v_idxs, size=num_val,
+                                           replace=False)
+    partitions['train'] = np.setdiff1d(t_v_idxs, partitions['val'],
+                                       assume_unique=True)
+    return partitions
+
+
+def load_data(file_path):
+    """
+    BEHAVIOR
+    Loads the full dataset (post Jan 2018) into working memory in the form
+    of a Pandas DataFrame for data analysis. Use the 'SPDCallDataset' class
+    for neural network applications.
+    PARAMETERS
+    file_path - str: File path to the truncated and processed .csv file.
+    RETURNS
+    data_2018 - pd.DataFrame: Full dataset of post Jan 2018 call data.
+    """
+    date_cols = ['Original Time Queued', 'Arrived Time']
+    data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
+    return data_2018
 
 
 def create_data(file_path):
@@ -111,12 +147,12 @@ def create_data(file_path):
     # in the unit of seconds and add to the DataFrame
     data_2018['response_time'] = time_delta.apply(lambda x: x.seconds)
 
-    data_2018.reset_index(inplace=True)
+    data_2018.reset_index(drop=True, inplace=True)
     data_2018.to_csv(r'data/Call_Data_2018.csv')
     return data_2018
 
 
-def plot_beats(data):
+def plot_beats(beats, data):
     """
     There are 5 precincts, each with a police station:
     1. North
@@ -136,16 +172,50 @@ def plot_beats(data):
     of the city.
 
     BEHAVIOR
+    Plots the response time by SPD 'beat'.
     PARAMETERS
+    beats - gpd.GeoDataFrame:
     data - pd.DataFrame: the 911 call dataset.
     RETURNS
+    n/a
     """
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
+    hood_path = 'data/geo/Community_Reporting_Areas/' \
+                + 'Community_Reporting_Areas.shp'
+    hoods = gpd.read_file(hood_path)
+    hoods.to_crs(epsg=4326, inplace=True)
 
-    # join beats with call data; join on 'beat' for the beats data
+    avg_response_time = data.groupby('Beat')['response_time'].mean()
+    avg_response_time /= 60
 
-    # pd.merge(beat
-    pass
+    merged = pd.merge(beats, avg_response_time, left_on='beat', right_on='Beat')
+
+    is_99 = merged['sector'] == '99'
+    h = merged['sector'] == 'H'
+    merged = merged[(~h) & (~is_99)]
+
+    fig, ax = plt.subplots(1)
+
+    merged.plot(column='response_time', ax=ax, legend=True)
+    hoods.plot(ax=ax, edgecolor='red', alpha=0)
+    plot_precinct_hq(ax)
+    plt.title('Average response time for each Police Beat in minutes')
+
+    plt.show()
+
+
+def plot_precinct_hq(ax):
+    precincts = gpd.read_file('data/geo/precinct_points.shp')
+    precincts[precincts['precinct'] != 'HQ'].plot(color='blue', ax=ax)
+
+
+def create_precinct_shp():
+    precincts = pd.read_csv('data/geo/precinct_locs.csv')
+    with shapefile.Writer('data/geo/precinct_points') as w:
+        w.field('precinct', 'C')
+        for i in range(len(precincts)):
+            w.point(precincts.loc[i, 'longitude'], precincts.loc[i, 'latitude'])
+            w.record(precincts.loc[i, 'precinct'])
 
 
 if __name__ == '__main__':

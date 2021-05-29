@@ -7,11 +7,24 @@ import pandas as pd
 import geopandas as gpd
 import torch
 import torch.nn as nn
-
+import FeatureExtractor as feat
+from model import NN
 
 def main():
-    pass
-
+    #create_data('SPD_call_data_5_20_2021.csv')
+    df = pd.read_csv('./data/Call_Data_2018.csv')
+    extractor = feat.FeatureExtractor('word2vec')
+    embeddings_dict = {}
+    for feat_type in feat.TYPE_FEATURES:
+        print(feat_type)
+        embed_idx, embedding = extractor.get_embeddings(df[feat_type])
+        embeddings_dict[feat_type] = [embed_idx, embedding]
+        
+    data = SPDCallDataset('./data/Call_Data_2018.csv')
+    sample_vect = extractor.transform(data[0:2][0], embeddings_dict)
+    print(sample_vect.shape)
+    model = NN([sample_vect.shape[1], 1000, 500, 100], embeddings_dict, extractor.transform)
+    pred = model(sample_vect)
 
 class SPDCallDataset(torch.utils.data.Dataset):
     """
@@ -37,7 +50,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
         data_2018.reset_index(inplace=True)
         self.y = data_2018['response_time'].copy()
-        self.data = data_2018.drop(labels='response_time')
+        self.data = data_2018.drop(labels='response_time', axis=1)
 
     def __getitem__(self, idx):
         """

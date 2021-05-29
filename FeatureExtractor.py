@@ -2,9 +2,17 @@
 """
 SPD FeatureExtractor
 """
+import re
 import gensim
+import torch
+import numpy as np
 import pandas as pd
 
+TYPE_FEATURES = ['Event Clearance Description', 'Call Type', 'Initial Call Type', 'Final Call Type']
+LOC_FEATURES = ['Precinct', 'Sector', 'Beat']
+NUM_FEATURES = ['Priority']
+
+# Event Clearance Description some missing '-', replace with 'none'
 class FeatureExtractor():
     """
     OBJECT DESCRIPTION
@@ -23,26 +31,57 @@ class FeatureExtractor():
         RETURNS
             n/a
         """
+        #self.embeddings = None
         self.embedding_type = embedding_type
         if embedding_type == 'word2vec':
             self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
-            
+            #self.embed_idx = {}
+    
     def get_embeddings(self, df):
         """
         BEHAVIOR
-            Returns a Pandas DataFrame containing the embeddings produced from the given Dataframe.
+            Returns an index dictionary and TorchTensor for DataFrame embeddings
         PARAMETERS
             df - Pandas DataFrame: DataFrame containing strings to embed
         RETURNS
-            embeddings - Pandas DataFrame: DataFrame containing the embeddings
+            embed_idx - Dict: lookup table for embedding idx
+            embeddings - FloatTensor: # category types x embedding size
         """
+        embed_idx = {}
+        categories = df.unique()
         if self.embedding_type == 'one-hot':
-            embeddings = pd.get_dummies(df, prefix='Init_Call_Type')
+            for i, category in enumerate(categories):
+                embed_idx[category] = i
+            embeddings = np.identity(len(categories))
         else:
-            tokenize_df = df.apply(lambda x: self.tokenize(x))
-            embeddings = self.word2vec[tokenize_df]
-        return embeddings
+            embeddings = np.ndarray([len(categories), 300])
+            for i, category in enumerate(categories):
+                tokenized = self.tokenize(category)
+                embed_idx[category] = i
+                embeddings[i] = self.vectorize(tokenized)
+                if np.isnan(embeddings[i]).any():
+                    print(tokenized)
+                    print(category)
+                
+        return embed_idx, torch.from_numpy(embeddings).float()
     
+    def transform(self, df, embeddings_dict):
+        """
+        BEHAVIOR
+            Returns a TorchTensor containing the vector representation for the given DataFrame.
+        """
+        if isinstance(df, pd.Series):
+            df = df.to_frame().transpose()
+            
+        ret = torch.Tensor()
+        for feat_type in embeddings_dict:
+            indices = embeddings_dict[feat_type][0]
+            embeddings = embeddings_dict[feat_type][1]
+            idx = [indices[x] for x in df[feat_type].tolist()]
+            ret = torch.cat([ret, embeddings[idx]], axis=1)
+                
+        return ret
+            
     def tokenize(self, string):
         """
         BEHAVIOR
@@ -52,4 +91,17 @@ class FeatureExtractor():
         RETURNS
             tokens - list: bag of words tokens from the string
         """
-        pass
+        tokens = re.split('[\s/]+', re.sub('[-,()]', '', string.lower()))
+        return tokens
+    
+    def vectorize(self, words):
+        avg_vector = np.zeros(300)
+        count = 0
+        for i in words:
+            if i in self.word2vec:
+                avg_vector += self.word2vec[i]
+                count += 1
+        if count < 1:
+            return self.word2vec['none']
+        else:
+            return avg_vector/count

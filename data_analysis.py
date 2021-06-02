@@ -3,6 +3,7 @@
 Code to conduct data analysis of Seattle 911 call data.
 """
 import math
+import shapefile
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -10,15 +11,29 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 import torch.nn as nn
-import shapefile
-
+import FeatureExtractor as feat
+from model import NN
 
 def main():
     sns.set()
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
     data_2018 = load_data(r'data/Call_Data_2018.csv')
     plot_beats(beats, data_2018)
-
+    
+    df = pd.read_csv('./data/Call_Data_2018.csv')
+    extractor = feat.FeatureExtractor('word2vec')
+    embeddings_dict = {}
+    for feat_type in feat.TYPE_FEATURES:
+        print(feat_type)
+        embed_idx, embedding = extractor.get_embeddings(df[feat_type])
+        embeddings_dict[feat_type] = [embed_idx, embedding]
+        
+    data = SPDCallDataset('./data/Call_Data_2018.csv')
+    sample_vect = extractor.transform(data[0:2][0], embeddings_dict)
+    print(sample_vect.shape)
+    model = NN([sample_vect.shape[1], 1000, 500, 100], embeddings_dict, extractor.transform)
+    pred = model(sample_vect)
+    
 
 class SPDCallDataset(torch.utils.data.Dataset):
     """
@@ -44,7 +59,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.file_path = file_path
         date_cols = ['Original Time Queued', 'Arrived Time']
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
-
+        
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
         self.data = data_2018.loc[idxs, :].copy()

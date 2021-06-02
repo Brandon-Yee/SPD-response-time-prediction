@@ -32,12 +32,14 @@ class FeatureExtractor():
             n/a
         """
         #self.embeddings = None
-        self.embedding_type = embedding_type
-        if embedding_type == 'word2vec':
-            self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
+        #self.embedding_type = embedding_type
+        self.embed_dict = {}
+
+        #if embedding_type == 'word2vec':
+        self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
             #self.embed_idx = {}
     
-    def get_embeddings(self, df):
+    def get_embeddings(self, df, features, embed_type='one-hot'):
         """
         BEHAVIOR
             Returns an index dictionary and TorchTensor for DataFrame embeddings
@@ -47,25 +49,23 @@ class FeatureExtractor():
             embed_idx - Dict: lookup table for embedding idx
             embeddings - FloatTensor: # category types x embedding size
         """
-        embed_idx = {}
-        categories = df.unique()
-        if self.embedding_type == 'one-hot':
-            for i, category in enumerate(categories):
-                embed_idx[category] = i
-            embeddings = np.identity(len(categories))
-        else:
-            embeddings = np.ndarray([len(categories), 300])
-            for i, category in enumerate(categories):
-                tokenized = self.tokenize(category)
-                embed_idx[category] = i
-                embeddings[i] = self.vectorize(tokenized)
-                if np.isnan(embeddings[i]).any():
-                    print(tokenized)
-                    print(category)
-                
-        return embed_idx, torch.from_numpy(embeddings).float()
-    
-    def transform(self, df, embeddings_dict):
+        for feat_type in features:
+            embed_idx = {}
+            categories = df[feat_type].unique()
+            if embed_type == 'one-hot':
+                for i, category in enumerate(categories):
+                    embed_idx[category] = i
+                embeddings = np.identity(len(categories))
+            else:
+                embeddings = np.ndarray([len(categories), 300])
+                for i, category in enumerate(categories):
+                    tokenized = self.tokenize(category)
+                    embed_idx[category] = i
+                    embeddings[i] = self.vectorize(tokenized)
+            self.embed_dict[feat_type] = [embed_idx, torch.from_numpy(embeddings).float()]
+        return self.embed_dict
+        
+    def transform(self, df):
         """
         BEHAVIOR
             Returns a TorchTensor containing the vector representation for the given DataFrame.
@@ -74,12 +74,16 @@ class FeatureExtractor():
             df = df.to_frame().transpose()
             
         ret = torch.Tensor()
-        for feat_type in embeddings_dict:
-            indices = embeddings_dict[feat_type][0]
-            embeddings = embeddings_dict[feat_type][1]
+        for feat_type in self.embed_dict:
+            indices = self.embed_dict[feat_type][0]
+            embeddings = self.embed_dict[feat_type][1]
             idx = [indices[x] for x in df[feat_type].tolist()]
             ret = torch.cat([ret, embeddings[idx]], axis=1)
-                
+        for feat_type in NUM_FEATURES:
+            tensor = torch.Tensor(df[feat_type].values)
+            tensor = torch.unsqueeze(tensor, 1)
+            ret = torch.cat([ret, tensor], axis=1)
+        
         return ret
             
     def tokenize(self, string):

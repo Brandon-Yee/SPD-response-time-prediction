@@ -20,17 +20,19 @@ def main():
     
     df = pd.read_csv('./data/Call_Data_2018.csv')
     extractor = feat.FeatureExtractor('word2vec')
-    embeddings_dict = {}
-    for feat_type in feat.TYPE_FEATURES:
-        print(feat_type)
-        embed_idx, embedding = extractor.get_embeddings(df[feat_type])
-        embeddings_dict[feat_type] = [embed_idx, embedding]
-        
-    data = SPDCallDataset('./data/Call_Data_2018.csv')
-    sample_vect = extractor.transform(data[0:2][0], embeddings_dict)
-    print(sample_vect.shape)
-    model = NN([sample_vect.shape[1], 1000, 500, 100], embeddings_dict, extractor.transform)
-    pred = model(sample_vect)
+    
+    extractor.get_embeddings(df, feat.TYPE_FEATURES, 'word2vec')
+    embed_dict = extractor.get_embeddings(df, feat.LOC_FEATURES, 'one-hot')
+    
+    partitions = gen_partition_idxs('./data/Call_Data_2018.csv')
+    train = SPDCallDataset(partitions['train'], './data/Call_Data_2018.csv')
+    
+    sample_vect = extractor.transform(train[0:2][0])
+    model = NN([sample_vect.shape[1], 1000, 500, 100], extractor)
+    batch = train[0:100][0]
+    pred = model(batch)
+    print(pred.shape)
+    print(pred)
     
 
 class SPDCallDataset(torch.utils.data.Dataset):

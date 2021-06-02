@@ -7,12 +7,14 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
 import torch.nn as nn
 import shapefile
 
 
 def main():
+    sns.set()
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
     data_2018 = load_data(r'data/Call_Data_2018.csv')
     plot_beats(beats, data_2018)
@@ -180,10 +182,10 @@ def plot_beats(beats, data):
     n/a
     """
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
-    hood_path = 'data/geo/Community_Reporting_Areas/' \
-                + 'Community_Reporting_Areas.shp'
-    hoods = gpd.read_file(hood_path)
-    hoods.to_crs(epsg=4326, inplace=True)
+    #hood_path = 'data/geo/Community_Reporting_Areas/' \
+    #            + 'Community_Reporting_Areas.shp'
+    #hoods = gpd.read_file(hood_path)
+    #hoods.to_crs(epsg=4326, inplace=True)
 
     avg_response_time = data.groupby('Beat')['response_time'].mean()
     avg_response_time /= 60
@@ -197,7 +199,7 @@ def plot_beats(beats, data):
     fig, ax = plt.subplots(1)
 
     merged.plot(column='response_time', ax=ax, legend=True)
-    hoods.plot(ax=ax, edgecolor='red', alpha=0)
+    #hoods.plot(ax=ax, edgecolor='red', alpha=0)
     plot_precinct_hq(ax)
     plt.title('Average response time for each Police Beat in minutes')
 
@@ -218,5 +220,51 @@ def create_precinct_shp():
             w.record(precincts.loc[i, 'precinct'])
 
 
+def plot_hist_priority(data):
+    fig, ax = plt.subplots(1)
+    sns.histplot(data['Priority'], ax=ax, discrete=True)
+    ticks = np.arange(-1, 10)
+    plt.xticks(ticks)
+    plt.title('Histogram of calls by Priority designation')
+    return ax
+
+
+def plot_hist_init_type(data):
+    fig, ax = plt.subplots(1, figsize=(36, 12))
+    sns.histplot(data['Initial Call Type'], discrete=True)
+    plt.xticks(rotation=30, fontsize=6, ha='right')
+    plt.subplots_adjust(bottom=0.4)
+    plt.title('Histogram of calls by Initial Call Type designation')
+    return ax
+
+
+def plot_top50_init_type(data):
+    fig, ax = plt.subplots(1, figsize=(18, 6))
+    grouped = data.groupby('Initial Call Type')['Initial Call Type'].count()
+    top_50 = grouped.nlargest(50)
+    sns.barplot(x=top_50.index, y=top_50)
+    plt.xticks(rotation=30, ha='right', fontsize=6)
+    plt.title('Number of calls by Initial Call Type (only top 50 shown)')
+    plt.subplots_adjust(bottom=0.35)
+
+
+def calls_over_time(data, n=25):
+    fig, ax = plt.subplots(1, figsize=(15, 8))
+    grouped = data.groupby('Initial Call Type')['Initial Call Type'].count()
+    top_n = grouped.nlargest(n)
+    for call_type in top_n.index:
+        data_sub = data[data['Initial Call Type'] == call_type]
+        resamp = data_sub.resample('W', on='Original Time Queued')['Initial Call Type'].count()
+        sns.lineplot(data=resamp, label=call_type, ax=ax)
+    plt.grid(which='minor', axis='x')
+    plt.xlim((pd.Timestamp(year=2016, month=8, day=1), pd.Timestamp(year=2021, month=7, day=1)))
+    plt.xticks(rotation=30, ha='right')
+    plt.legend(loc='upper left', fontsize=8)
+    plt.xlabel('Time')
+    plt.ylabel('Weekly Count of Call Type')
+    plt.title('Weekly Count of Call Type over Time')
+
+
 if __name__ == '__main__':
-    main()
+    #main()
+    pass

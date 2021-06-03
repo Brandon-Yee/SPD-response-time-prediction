@@ -96,7 +96,7 @@ def gen_partition_idxs(file_path, pct_test=0.15, pct_val=0.15, seed=21):
     Generates the indexes for each partition of the data.
     PARAMETERS
     file_path - str: File path to the cleaned .csv that was created by the
-        'create_data' function defined below.
+        'create_data' function defined below (not the 'load_data' function).
     RETURNS
     partitions - Dict: Train/val/test partitions. The keys are strings:
         'train', 'val', and 'test', with the corresponding values as 1D arrays
@@ -126,7 +126,7 @@ def load_data(file_path):
     BEHAVIOR
     Loads the full dataset (post Jan 2018) into working memory in the form
     of a Pandas DataFrame for data analysis. Use the 'SPDCallDataset' class
-    for neural network applications.
+    for neural network applications instead of this function.
     PARAMETERS
     file_path - str: File path to the truncated and processed .csv file.
     RETURNS

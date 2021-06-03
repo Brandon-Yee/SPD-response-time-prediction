@@ -28,6 +28,7 @@ def main():
     train = SPDCallDataset(partitions['train'], './data/Call_Data_2018.csv')
     
     sample_vect = extractor.transform(train[0:2][0])
+    # n x d
     model = NN([sample_vect.shape[1], 1000, 500, 100], extractor)
     batch = train[0:100][0]
     pred = model(batch)

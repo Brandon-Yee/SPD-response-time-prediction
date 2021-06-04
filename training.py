@@ -38,14 +38,10 @@ def main():
     pct_test = 0.15
     parts = gen_partition_idxs(FILE_PATH, pct_test=pct_test, pct_val=pct_test)
 
-    # load whole dataframe to pass to feature extractor
-    whole_df = load_data(FILE_PATH)
-
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
     feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
-    #feat_extractor = feat.FeatureExtractor()
 
     # run get_embeddings for location features and call type features
     #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')

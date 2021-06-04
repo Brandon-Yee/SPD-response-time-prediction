@@ -36,11 +36,12 @@ def main():
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
-    feat_extractor = feat.FeatureExtractor()
+    feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
     # run get_embeddings for location features and call type features
-    feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
-    feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
-
+    #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
+    #feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
+    #feat_extractor.save()
+    
     train_dataset = SPDCallDataset(parts['train'], FILE_PATH, feat_extractor)
     val_dataset = SPDCallDataset(parts['val'], FILE_PATH, feat_extractor)
     test_dataset = SPDCallDataset(parts['test'], FILE_PATH, feat_extractor)

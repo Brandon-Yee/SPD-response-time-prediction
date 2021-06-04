@@ -3,6 +3,7 @@
 SPD FeatureExtractor
 """
 import re
+import pickle
 import gensim
 import torch
 import numpy as np
@@ -21,7 +22,7 @@ class FeatureExtractor():
         embedding_type - str: Type of embedding to use ('one-hot', 'word2vec')
         word2vec - KeyedVectors: vector embedding vocabulary look up
     """
-    def __init__(self, word2vec_path='./GoogleNews-vectors-negative300.bin'):
+    def __init__(self, word2vec_path='./GoogleNews-vectors-negative300.bin', from_file=None):
         """
         BEHAVIOR
             Instantiates the feature extractor for generating embeddings from call types.
@@ -32,7 +33,10 @@ class FeatureExtractor():
             n/a
         """
         self.embed_dict = {}
-        self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
+        if from_file:
+            self.embed_dict = pickle.load(open(from_file, 'rb'))
+        else:
+            self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
 
     
     def get_embeddings(self, df, features, embed_type='one-hot'):
@@ -79,9 +83,12 @@ class FeatureExtractor():
             tensor = torch.Tensor(df[feat_type].values.astype(int))
             tensor = torch.unsqueeze(tensor, 1)
             ret = torch.cat([ret, tensor], axis=1)
-        
+
         return ret
-            
+
+    def save(self, filename='embedding_dict.pickle'):
+        pickle.dump(self.embed_dict, filename)
+
     def tokenize(self, string):
         """
         BEHAVIOR

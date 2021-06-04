@@ -47,7 +47,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
     data - pd.DataFrame: DataFrame of features.
     y - pd.Series, dtype=int: Series of response times in seconds.
     """
-    def __init__(self, idxs, file_path):
+    def __init__(self, idxs, file_path, feat_extractor):
         """
         BEHAVIOR
         Instantiates the dataset partition.
@@ -55,10 +55,13 @@ class SPDCallDataset(torch.utils.data.Dataset):
         idxs - 1D np.ndarray: Array of index values that will represent the
             partition.
         file_path - str: File path to the truncated and processed .csv file.
+        feat_extractor - FeatureExtractor: Assumes already trained
+            FeatureExtractor.
         RETURNS
         n/a
         """
         self.file_path = file_path
+        self.feat_extractor = feat_extractor
         date_cols = ['Original Time Queued', 'Arrived Time']
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
         
@@ -77,7 +80,8 @@ class SPDCallDataset(torch.utils.data.Dataset):
             of the tuple and the target value in the form of an integer is
             the 1-index of the tuple.
         """
-        return self.data.iloc[idx], self.y.iloc[idx]
+        X = self.feat_extractor.transform(self.data.iloc[idx])
+        return X, self.y.iloc[idx]
 
     def __len__(self):
         """

@@ -15,7 +15,7 @@ from datetime import datetime
 
 NUM_MODELS_TO_TRAIN = 1
 D = 1275
->>>>>>> 48388e881d8c24f5e849b7d01f2e88f573786787
+
 FILE_PATH = r'data/Call_Data_2018.csv'
 
 
@@ -62,7 +62,6 @@ def main():
 
 
     # epochs = [1, 2, 3]  ################## remove this line (for debugging)
->>>>>>> 48388e881d8c24f5e849b7d01f2e88f573786787
 
     learning_rates = [0.001, 0.01, 0.1]
     batch_sizes = [200, 500, 1000]
@@ -147,7 +146,6 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                                              batch_size=train_batch_size,
                                              num_workers=num_workers,
                                              shuffle=False)
->>>>>>> 48388e881d8c24f5e849b7d01f2e88f573786787
 
     num_train_batches = len(train_loader)
     print(f"number of training batches in one epoch: {num_train_batches}")
@@ -178,7 +176,6 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
 
             #if batch_num > 10:
             #    break
->>>>>>> 48388e881d8c24f5e849b7d01f2e88f573786787
 
             X = data_batch[0].to(device)
             y = data_batch[1].to(device)

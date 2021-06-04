@@ -15,10 +15,10 @@ class NN(nn.Module):
         super(NN, self).__init__()
         self.layer_sizes = layer_sizes
         self.extractor = extractor
-        self.hidden_layers = []
+        self.hidden_layers = nn.ModuleList()
         for i in range(len(layer_sizes)-1):
             self.hidden_layers.append(nn.Linear(layer_sizes[i], layer_sizes[i+1]))
-           
+
     def forward(self, x):
         # n x d input
         x = self.extractor.transform(x)

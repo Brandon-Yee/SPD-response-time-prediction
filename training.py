@@ -6,11 +6,13 @@ import torch.nn as nn
 import torch.optim as opt
 from data_analysis import gen_partition_idxs
 from data_analysis import SPDCallDataset
+from data_analysis import load_data
+import FeatureExtractor as feat
 import pickle
 from datetime import datetime
 
 
-NUM_MODELS_TO_TRAIN = 10
+NUM_MODELS_TO_TRAIN = 1
 D = 1341
 FILE_PATH = r'data/Call_Data_2018.csv'
 
@@ -28,10 +30,20 @@ def main():
     pct_test = 0.15
     parts = gen_partition_idxs(FILE_PATH, pct_test=pct_test, pct_val=pct_test)
 
-    train_dataset = SPDCallDataset(parts['train'], FILE_PATH)
-    val_dataset = SPDCallDataset(parts['val'], FILE_PATH)
-    test_dataset = SPDCallDataset(parts['test'], FILE_PATH)
+    # load whole dataframe to pass to feature extractor
+    whole_df = load_data(FILE_PATH)
 
+    # create feature extractor here
+    w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
+        + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
+    feat_extractor = feat.FeatureExtractor('word2vec', word2vec_path=w2v_path)
+    # run get_embeddings for location features and call type features
+    feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
+    feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
+
+    train_dataset = SPDCallDataset(parts['train'], FILE_PATH, feat_extractor)
+    val_dataset = SPDCallDataset(parts['val'], FILE_PATH, feat_extractor)
+    test_dataset = SPDCallDataset(parts['test'], FILE_PATH, feat_extractor)
 
     # establish lists of potential hyperparameter values
     epochs = [10, 20, 30, 40]
@@ -43,9 +55,7 @@ def main():
     num_nodes = [50, 100, 200, 250]
     # add other hyperparams
 
-    # create feature extractor here
-    # TODO
-    feat_extractor = None
+
 
     for i in range(NUM_MODELS_TO_TRAIN):
         # randomly select hyperparams
@@ -62,8 +72,12 @@ def main():
 
         print(f'Starting model # {i + 1} out of {NUM_MODELS_TO_TRAIN} -------')
         # train each model
+        #loader = train_model(ep, bs, lr, opti, decay, nodes,
+        #                          feat_extractor, train_dataset, val_dataset)
         models.append(train_model(ep, bs, lr, opti, decay, nodes,
                                   feat_extractor, train_dataset, val_dataset))
+
+    #return loader
 
     model_df = pd.DataFrame(models)
 
@@ -103,10 +117,14 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                                              shuffle=False)
 
     num_train_batches = len(train_loader)
+    print(f"number of training batches in one epoch: {num_train_batches}")
 
+    #return train_loader
 
     # define model
     model = NN(nodes, feat_extractor)
+    print(model)
+    print(f"model parameters: {model.parameters()}")
 
     # loss function
     loss_func = nn.MSELoss()
@@ -126,9 +144,17 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
+            print(f"data_batch type: {type(data_batch)}")
+            print(f"batch number: {batch_num}")
+            print(f"data_batch len: {len(data_batch)}")
             X = data_batch[0]
             y = data_batch[1]
 
+            print(f"X type: {type(X)}")
+            print(f"X shape: {X.shape}")
+            print(f"y len: {len(y)}")
+            print(X)
+            print(y)
             # zero gradient
             optim.zero_grad()
 

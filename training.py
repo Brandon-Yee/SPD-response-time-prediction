@@ -53,8 +53,8 @@ def main():
 
     # establish lists of potential hyperparameter values
 
-    epochs = [4, 6, 8, 10]  ######## uncomment <- this line
-    # epochs = [1]  ################## remove this line (for debugging)
+    # epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+    epochs = [1]  ################## remove this line (for debugging)
 
     learning_rates = [0.001, 0.01, 0.1]
     batch_sizes = [200, 500, 1000]
@@ -149,8 +149,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
-            # if batch_num > 10:
-            #     break
+            if batch_num > 10:
+                break
 
             X = data_batch[0].to(device)
             y = data_batch[1].to(device)
@@ -184,13 +184,17 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         model.eval()
         val_loss = 0
         with torch.no_grad():
+            counter = 1
             for X_val, y_val in val_loader:
+                print(f"Starting validation batch {counter} of",
+                      f"{len(val_loader)}")
                 X_val, y_val = X_val.to(device), y_val.to(device)
                 # predict
                 y_val_hat = model(X_val)
 
                 # calc loss
                 val_loss += loss_func(y_val_hat.squeeze(), y_val).item()
+                counter += 1
 
         # store validation loss
         val_loss_list[epoch] = val_loss

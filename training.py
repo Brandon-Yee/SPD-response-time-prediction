@@ -12,7 +12,7 @@ import pickle
 from datetime import datetime
 
 
-NUM_MODELS_TO_TRAIN = 1
+NUM_MODELS_TO_TRAIN = 10
 D = 1341
 FILE_PATH = r'data/Call_Data_2018.csv'
 
@@ -53,8 +53,8 @@ def main():
 
     # establish lists of potential hyperparameter values
 
-    # epochs = [4, 6, 8, 10]  ######## uncomment <- this line
-    epochs = [1]  ################## remove this line (for debugging)
+    epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+    # epochs = [1]  ################## remove this line (for debugging)
 
     learning_rates = [0.001, 0.01, 0.1]
     batch_sizes = [200, 500, 1000]
@@ -80,11 +80,13 @@ def main():
 
         print(f'Starting model # {i + 1} out of {NUM_MODELS_TO_TRAIN} -------')
         # train each model
-        #loader = train_model(ep, bs, lr, opti, decay, nodes,
-        #                          feat_extractor, train_dataset, val_dataset)
         models.append(train_model(ep, bs, lr, opti, decay, nodes,
                                   feat_extractor, train_dataset, val_dataset,
                                   device))
+        # save the model dictionary that contains the trained model and hyps
+        save_file = calc_filename('model')
+        with open(save_file, 'wb') as f:
+            pickle.dump(models[i], f)
 
     model_df = pd.DataFrame(models)
 
@@ -93,13 +95,21 @@ def main():
     print(f"Script started at {start}\n\tand ended at {end}")
     print(f"Duration: {end - start}")
 
-    # pickle here!
-    save_file = "model_df_" + str(end.year) + str(end.month) + str(end.day) \
-        + '_' + str(end.hour) + str(end.minute) + '.pickle'
+    # pickle the entire dataframe of models and info
+    save_file = calc_filename('model_df')
     with open(save_file, 'wb') as f:
         pickle.dump(model_df, f)
 
     return model_df
+
+
+def calc_filename(label):
+    now = pd.to_datetime(datetime.now())
+    iso_fmt = now.isoformat()
+    parts = iso_fmt.split(sep='T')
+    save_file = label + "_" + parts[0] + '_' + parts[1][:2] + parts[1][3:5] \
+        + '.pickle'
+    return save_file
 
 
 def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
@@ -117,11 +127,11 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
     # prep data
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=train_batch_size,
-                                               shuffle=True)
+                                               shuffle=True, num_workers=5)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=train_batch_size,
-                                             shuffle=False)
+                                             shuffle=False, num_workers=5)
 
     num_train_batches = len(train_loader)
     print(f"number of training batches in one epoch: {num_train_batches}")
@@ -149,8 +159,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
-            if batch_num > 10:
-                break
+            # if batch_num > 10:
+            #     break
 
             X = data_batch[0].to(device)
             y = data_batch[1].to(device)
@@ -170,7 +180,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             # step downhill
             optim.step()
 
-            epoch_loss += batch_loss.item()
+            epoch_loss += batch_loss.item() / len(y)
 
             print(f'Epoch - {epoch + 1} / {num_epochs} - :\tEnd of Batch\t--'
                   + f' {batch_num + 1} / {num_train_batches} ---')
@@ -193,7 +203,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                 y_val_hat = model(X_val)
 
                 # calc loss
-                val_loss += loss_func(y_val_hat.squeeze(), y_val).item()
+                val_batch_loss = loss_func(y_val_hat.squeeze(), y_val).item()
+                val_loss += val_batch_loss / len(y_val)
                 counter += 1
 
         # store validation loss

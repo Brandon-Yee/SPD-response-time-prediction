@@ -17,11 +17,12 @@ class NN(nn.Module):
         self.hidden_layers = nn.ModuleList()
         for i in range(len(layer_sizes)-1):
             self.hidden_layers.append(nn.Linear(layer_sizes[i], layer_sizes[i+1]))
+        self.hidden_layers.append(nn.Linear(self.layer_sizes[-1], OUT_DIM))
 
     def forward(self, x):
         # n x d input
-        for i in range(len(self.hidden_layers)):
+        for i in range(len(self.hidden_layers) - 1):
             x = self.hidden_layers[i](x)
             x = F.relu(x)
-        x = nn.Linear(self.layer_sizes[-1], OUT_DIM)(x)
+        x = self.hidden_layers[-1](x)
         return x

@@ -36,7 +36,7 @@ def main():
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
-    feat_extractor = feat.FeatureExtractor('word2vec', word2vec_path=w2v_path)
+    feat_extractor = feat.FeatureExtractor()
     # run get_embeddings for location features and call type features
     feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
     feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
@@ -122,7 +122,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
     #return train_loader
 
     # define model
-    model = NN(nodes, feat_extractor)
+    model = NN(nodes)
     print(model)
     print(f"model parameters: {model.parameters()}")
 
@@ -144,17 +144,17 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
-            print(f"data_batch type: {type(data_batch)}")
-            print(f"batch number: {batch_num}")
-            print(f"data_batch len: {len(data_batch)}")
+            #print(f"data_batch type: {type(data_batch)}")
+            #print(f"batch number: {batch_num}")
+            #print(f"data_batch len: {len(data_batch)}")
             X = data_batch[0]
             y = data_batch[1]
 
-            print(f"X type: {type(X)}")
-            print(f"X shape: {X.shape}")
-            print(f"y len: {len(y)}")
-            print(X)
-            print(y)
+            #print(f"X type: {type(X)}")
+            #print(f"X shape: {X.shape}")
+            #print(f"y len: {len(y)}")
+            #print(X)
+            #print(y)
             # zero gradient
             optim.zero_grad()
 
@@ -162,7 +162,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             y_hat = model(X)
 
             # calc loss
-            batch_loss = loss_func(y_hat, y)
+            batch_loss = loss_func(y_hat, y.float())
 
             # back prop
             batch_loss.backward()
@@ -171,7 +171,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             optim.step()
 
             epoch_loss += batch_loss.item()
-            epoch_num_tot += y.shape[0]
+            #epoch_num_tot += y.shape[0]
             print(f'Epoch - {epoch + 1} / {num_epochs} - :\tEnd of Batch\t--'
                   + f' {batch_num + 1} / {num_train_batches} ---')
 

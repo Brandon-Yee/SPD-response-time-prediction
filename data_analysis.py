@@ -21,7 +21,7 @@ def main():
     plot_beats(beats, data_2018)
     
     df = pd.read_csv('./data/Call_Data_2018.csv')
-    extractor = feat.FeatureExtractor('word2vec')
+    extractor = feat.FeatureExtractor()
     
     extractor.get_embeddings(df, feat.TYPE_FEATURES, 'word2vec')
     embed_dict = extractor.get_embeddings(df, feat.LOC_FEATURES, 'one-hot')

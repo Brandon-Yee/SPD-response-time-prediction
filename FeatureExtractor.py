@@ -21,7 +21,7 @@ class FeatureExtractor():
         embedding_type - str: Type of embedding to use ('one-hot', 'word2vec')
         word2vec - KeyedVectors: vector embedding vocabulary look up
     """
-    def __init__(self, embedding_type, word2vec_path='./GoogleNews-vectors-negative300.bin'):
+    def __init__(self, word2vec_path='./GoogleNews-vectors-negative300.bin'):
         """
         BEHAVIOR
             Instantiates the feature extractor for generating embeddings from call types.
@@ -31,13 +31,9 @@ class FeatureExtractor():
         RETURNS
             n/a
         """
-        #self.embeddings = None
-        #self.embedding_type = embedding_type
         self.embed_dict = {}
-
-        #if embedding_type == 'word2vec':
         self.word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
-            #self.embed_idx = {}
+
     
     def get_embeddings(self, df, features, embed_type='one-hot'):
         """
@@ -80,7 +76,7 @@ class FeatureExtractor():
             idx = [indices[x] for x in df[feat_type].tolist()]
             ret = torch.cat([ret, embeddings[idx]], axis=1)
         for feat_type in NUM_FEATURES:
-            tensor = torch.Tensor(df[feat_type].values)
+            tensor = torch.Tensor(df[feat_type].values.astype(int))
             tensor = torch.unsqueeze(tensor, 1)
             ret = torch.cat([ret, tensor], axis=1)
         

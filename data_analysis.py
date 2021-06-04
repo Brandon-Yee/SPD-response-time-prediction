@@ -65,11 +65,10 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.feat_extractor = feat_extractor
         date_cols = ['Original Time Queued', 'Arrived Time']
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
-        
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
         self.data = data_2018.loc[idxs, :].copy()
-
+        
     def __getitem__(self, idx):
         """
         BEHAVIOR
@@ -171,6 +170,7 @@ def create_data(file_path):
     # in the unit of seconds and add to the DataFrame
     data_2018['response_time'] = time_delta.apply(lambda x: x.seconds)
 
+    data_2018.dropna(inplace=True)
     data_2018.reset_index(drop=True, inplace=True)
     data_2018.to_csv(r'data/Call_Data_2018.csv')
     return data_2018

@@ -86,8 +86,8 @@ class FeatureExtractor():
 
         return ret
 
-    def save(self, filename='embedding_dict.pickle'):
-        pickle.dump(self.embed_dict, filename)
+    def save(self, filename='embed_dict.pickle'):
+        pickle.dump(self.embed_dict, open(filename, 'wb'))
 
     def tokenize(self, string):
         """

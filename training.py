@@ -13,7 +13,7 @@ from datetime import datetime
 
 
 NUM_MODELS_TO_TRAIN = 1
-D = 1341
+D = 1275
 FILE_PATH = r'data/Call_Data_2018.csv'
 
 
@@ -42,7 +42,9 @@ def main():
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
-    feat_extractor = feat.FeatureExtractor(word2vec_path=w2v_path, from_file='embed_dict.pickle')
+    feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
+    #feat_extractor = feat.FeatureExtractor()
+
     # run get_embeddings for location features and call type features
     #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
     #feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
@@ -54,8 +56,8 @@ def main():
 
     # establish lists of potential hyperparameter values
 
-    # epochs = [4, 6, 8, 10]  ######## uncomment <- this line
-    epochs = [1]  ################## remove this line (for debugging)
+    epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+    # epochs = [1, 2, 3]  ################## remove this line (for debugging)
 
     learning_rates = [0.001, 0.01, 0.1]
     batch_sizes = [200, 500, 1000]
@@ -115,13 +117,20 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
     model_info['num_nodes'] = nodes
     model_info['weight_decay'] = decay
 
+    num_workers = 2
+    if train_batch_size == 500:
+        num_workers = 4
+    elif train_batch_size == 200:
+        num_workers = 8
     # prep data
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=train_batch_size,
+                                               num_workers=num_workers,
                                                shuffle=True)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=train_batch_size,
+                                             num_workers=num_workers,
                                              shuffle=False)
 
     num_train_batches = len(train_loader)
@@ -150,8 +159,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
-            if batch_num > 10:
-                break
+            #if batch_num > 10:
+            #    break
 
             X = data_batch[0].to(device)
             y = data_batch[1].to(device)

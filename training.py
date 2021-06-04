@@ -114,8 +114,8 @@ def calc_filename(label):
     now = pd.to_datetime(datetime.now())
     iso_fmt = now.isoformat()
     parts = iso_fmt.split(sep='T')
-    save_file = label + "_" + parts[0] + '_' + parts[1][:2] + parts[1][3:5] \
-        + '.pickle'
+    save_file = 'output/' + label + "_" + parts[0] + '_' + parts[1][:2] \
+        + parts[1][3:5] + '.pickle'
     return save_file
 
 

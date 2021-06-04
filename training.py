@@ -18,6 +18,12 @@ FILE_PATH = r'data/Call_Data_2018.csv'
 
 
 def main():
+
+    # CUDA for PyTorch
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    torch.backends.cudnn.benchmark = True
+
     rng = np.random.default_rng()
     start = pd.to_datetime(datetime.now())
 
@@ -36,7 +42,7 @@ def main():
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
-    feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
+    feat_extractor = feat.FeatureExtractor(word2vec_path=w2v_path, from_file='embed_dict.pickle')
     # run get_embeddings for location features and call type features
     #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
     #feat_extractor.get_embeddings(whole_df, feat.TYPE_FEATURES, 'word2vec')
@@ -47,17 +53,19 @@ def main():
     test_dataset = SPDCallDataset(parts['test'], FILE_PATH, feat_extractor)
 
     # establish lists of potential hyperparameter values
-    epochs = [10, 20, 30, 40]
+
+    # epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+    epochs = [1]  ################## remove this line (for debugging)
+
     learning_rates = [0.001, 0.01, 0.1]
     batch_sizes = [200, 500, 1000]
     optims = [opt.SGD, opt.Adam, opt.Adagrad, opt.RMSprop]
     decays = [0, 0.01, 0.1, 0.2, 0.5, 1]
     num_hidden_layers = [2, 3, 4, 5, 6]
     num_nodes = [50, 100, 200, 250]
-    # add other hyperparams
+    # add other hyperparams if needed
 
-
-
+    # train a bunch of models
     for i in range(NUM_MODELS_TO_TRAIN):
         # randomly select hyperparams
         ep = epochs[rng.integers(len(epochs))]
@@ -76,9 +84,8 @@ def main():
         #loader = train_model(ep, bs, lr, opti, decay, nodes,
         #                          feat_extractor, train_dataset, val_dataset)
         models.append(train_model(ep, bs, lr, opti, decay, nodes,
-                                  feat_extractor, train_dataset, val_dataset))
-
-    #return loader
+                                  feat_extractor, train_dataset, val_dataset,
+                                  device))
 
     model_df = pd.DataFrame(models)
 
@@ -97,7 +104,7 @@ def main():
 
 
 def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
-                nodes, feat_extractor, train_dataset, val_dataset):
+                nodes, feat_extractor, train_dataset, val_dataset, device):
     model_info = {}
     start_time = pd.to_datetime(datetime.now())
     # store hyperparams
@@ -114,18 +121,16 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                                                shuffle=True)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=len(val_dataset),
+                                             batch_size=train_batch_size,
                                              shuffle=False)
 
     num_train_batches = len(train_loader)
     print(f"number of training batches in one epoch: {num_train_batches}")
 
-    #return train_loader
-
     # define model
     model = NN(nodes)
+    model.to('cuda')
     print(model)
-    print(f"model parameters: {model.parameters()}")
 
     # loss function
     loss_func = nn.MSELoss()
@@ -145,17 +150,12 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
-            #print(f"data_batch type: {type(data_batch)}")
-            #print(f"batch number: {batch_num}")
-            #print(f"data_batch len: {len(data_batch)}")
-            X = data_batch[0]
-            y = data_batch[1]
+            if batch_num > 10:
+                break
 
-            #print(f"X type: {type(X)}")
-            #print(f"X shape: {X.shape}")
-            #print(f"y len: {len(y)}")
-            #print(X)
-            #print(y)
+            X = data_batch[0].to(device)
+            y = data_batch[1].to(device)
+
             # zero gradient
             optim.zero_grad()
 
@@ -163,7 +163,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             y_hat = model(X)
 
             # calc loss
-            batch_loss = loss_func(y_hat, y.float())
+            batch_loss = loss_func(y_hat.squeeze(), y.float())
 
             # back prop
             batch_loss.backward()
@@ -172,7 +172,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             optim.step()
 
             epoch_loss += batch_loss.item()
-            #epoch_num_tot += y.shape[0]
+
             print(f'Epoch - {epoch + 1} / {num_epochs} - :\tEnd of Batch\t--'
                   + f' {batch_num + 1} / {num_train_batches} ---')
 
@@ -185,16 +185,20 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         model.eval()
         val_loss = 0
         with torch.no_grad():
+            counter = 1
             for X_val, y_val in val_loader:
-
+                print(f"Starting validation batch {counter} of",
+                      f"{len(val_loader)}")
+                X_val, y_val = X_val.to(device), y_val.to(device)
                 # predict
                 y_val_hat = model(X_val)
 
                 # calc loss
-                val_loss += loss_func(y_val_hat, y_val).item()
+                val_loss += loss_func(y_val_hat.squeeze(), y_val).item()
+                counter += 1
 
         # store validation loss
-        val_loss_list.append(val_loss)
+        val_loss_list[epoch] = val_loss
         print(f"\tValidation loss:\t{val_loss}")
         print()
 

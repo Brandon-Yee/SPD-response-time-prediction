@@ -18,25 +18,8 @@ def main():
     sns.set()
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
     data_2018 = load_data(r'data/Call_Data_2018.csv')
-    plot_beats(beats, data_2018)
-    
-    df = pd.read_csv('./data/Call_Data_2018.csv')
-    extractor = feat.FeatureExtractor()
-    
-    extractor.get_embeddings(df, feat.TYPE_FEATURES, 'word2vec')
-    embed_dict = extractor.get_embeddings(df, feat.LOC_FEATURES, 'one-hot')
-    
-    partitions = gen_partition_idxs('./data/Call_Data_2018.csv')
-    train = SPDCallDataset(partitions['train'], './data/Call_Data_2018.csv')
-    
-    sample_vect = extractor.transform(train[0:2][0])
-    # n x d
-    model = NN([sample_vect.shape[1], 1000, 500, 100], extractor)
-    batch = train[0:100][0]
-    pred = model(batch)
-    print(pred.shape)
-    print(pred)
-    
+    return data_2018
+
 
 class SPDCallDataset(torch.utils.data.Dataset):
     """
@@ -65,10 +48,14 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.feat_extractor = feat_extractor
         date_cols = ['Original Time Queued', 'Arrived Time']
         data_2018 = pd.read_csv(file_path, parse_dates=date_cols)
+
+        # subset the DF so that we only get rows that have a response_time > 0
+        data_2018 = data_2018[data_2018['response_time'] > 0]
+
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
         self.data = data_2018.loc[idxs, :].copy()
-        
+
     def __getitem__(self, idx):
         """
         BEHAVIOR
@@ -288,5 +275,5 @@ def calls_over_time(data, n=25):
 
 
 if __name__ == '__main__':
-    #main()
+    #data_2018 = main()
     pass

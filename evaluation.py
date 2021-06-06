@@ -68,11 +68,11 @@ def evaluate_model(model_df, device, train_dataset=None, val_dataset=None, test_
     
     # plot the loss, prefers batch training for more accurate picture
     plt.figure()
-    if 'batch_train_loss' in model_df.columns():
-        plt.plot(model_df['batch_train_loss'], label='Train')
-    else:
-        plt.plot(model_df['training_loss'], label='Train')
-        plt.plot(model_df['validation_loss'], label='Validation')
+    #if 'batch_train_loss' in model_df.columns():
+    #    plt.plot(model_df['batch_train_loss'], label='Train')
+    #else:
+    plt.plot(model_df['training_loss'], label='Train')
+    plt.plot(model_df['validation_loss'], label='Validation')
         
     plt.title('Training and Validation Loss')
     plt.xlabel('Training Epoch')
@@ -80,6 +80,7 @@ def evaluate_model(model_df, device, train_dataset=None, val_dataset=None, test_
     plt.legend()
     
     if train_dataset:
+        train_dataset, _ = torch.utils.data.random_split(train_dataset, [10000, len(train_dataset) - 10000])
         train_loader = torch.utils.data.DataLoader(train_dataset,
                                                    batch_size=train_batch_size,
                                                    num_workers=num_workers,
@@ -154,6 +155,7 @@ def evaluate_model(model_df, device, train_dataset=None, val_dataset=None, test_
     plt.scatter(train_predictions, train_y)
     plt.xlabel('Predicted Response Time')
     plt.ylabel('Response Time')
+    plt.draw()
     return [train_loss, val_loss, test_loss], [train_predictions], [train_y]
 
 if __name__ == '__main__':

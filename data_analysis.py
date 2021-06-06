@@ -51,6 +51,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
 
         # subset the DF so that we only get rows that have a response_time > 0
         data_2018 = data_2018[data_2018['response_time'] > 0]
+        data_2018.reset_index(drop=True, inplace=True)
 
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
@@ -94,6 +95,9 @@ def gen_partition_idxs(file_path, pct_test=0.15, pct_val=0.15, seed=21):
     """
     default_rng = np.random.default_rng(seed=seed)
     data_2018 = pd.read_csv(file_path)
+
+    # only look at rows that have a response time greater than 0
+    data_2018 = data_2018[data_2018['response_time'] > 0]
 
     num_samples = len(data_2018)
     num_test = int(math.floor(pct_test * num_samples))

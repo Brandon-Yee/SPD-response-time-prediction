@@ -56,6 +56,8 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
         self.data = data_2018.loc[idxs, :].copy()
+        self.mu = self.y.mean()
+        self.sigma = self.y.std()
 
     def __getitem__(self, idx):
         """
@@ -69,7 +71,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
             the 1-index of the tuple.
         """
         X = self.feat_extractor.transform(self.data.iloc[idx])
-        return X, self.y.iloc[idx]
+        return X, (self.y.iloc[idx]-self.mu) / self.sigma
 
     def __len__(self):
         """

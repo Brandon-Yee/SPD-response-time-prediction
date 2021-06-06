@@ -12,8 +12,10 @@ import pickle
 from datetime import datetime
 
 
+
 NUM_MODELS_TO_TRAIN = 1
 D = 1275
+
 FILE_PATH = r'data/Call_Data_2018.csv'
 
 
@@ -36,14 +38,10 @@ def main():
     pct_test = 0.15
     parts = gen_partition_idxs(FILE_PATH, pct_test=pct_test, pct_val=pct_test)
 
-    # load whole dataframe to pass to feature extractor
-    whole_df = load_data(FILE_PATH)
-
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
     feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
-    #feat_extractor = feat.FeatureExtractor()
 
     # run get_embeddings for location features and call type features
     #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
@@ -57,6 +55,8 @@ def main():
     # establish lists of potential hyperparameter values
 
     epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+
+
     # epochs = [1, 2, 3]  ################## remove this line (for debugging)
 
     learning_rates = [0.001, 0.01, 0.1]
@@ -83,11 +83,13 @@ def main():
 
         print(f'Starting model # {i + 1} out of {NUM_MODELS_TO_TRAIN} -------')
         # train each model
-        #loader = train_model(ep, bs, lr, opti, decay, nodes,
-        #                          feat_extractor, train_dataset, val_dataset)
         models.append(train_model(ep, bs, lr, opti, decay, nodes,
                                   feat_extractor, train_dataset, val_dataset,
                                   device))
+        # save the model dictionary that contains the trained model and hyps
+        save_file = calc_filename('model')
+        with open(save_file, 'wb') as f:
+            pickle.dump(models[i], f)
 
     model_df = pd.DataFrame(models)
 
@@ -96,13 +98,21 @@ def main():
     print(f"Script started at {start}\n\tand ended at {end}")
     print(f"Duration: {end - start}")
 
-    # pickle here!
-    save_file = "model_df_" + str(end.year) + str(end.month) + str(end.day) \
-        + '_' + str(end.hour) + str(end.minute) + '.pickle'
+    # pickle the entire dataframe of models and info
+    save_file = calc_filename('model_df')
     with open(save_file, 'wb') as f:
         pickle.dump(model_df, f)
 
     return model_df
+
+
+def calc_filename(label):
+    now = pd.to_datetime(datetime.now())
+    iso_fmt = now.isoformat()
+    parts = iso_fmt.split(sep='T')
+    save_file = 'output/' + label + "_" + parts[0] + '_' + parts[1][:2] \
+        + parts[1][3:5] + '.pickle'
+    return save_file
 
 
 def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
@@ -159,6 +169,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         # train loop over each batch
         model.train()
         for batch_num, data_batch in enumerate(train_loader):
+
             #if batch_num > 10:
             #    break
 
@@ -180,7 +191,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             # step downhill
             optim.step()
 
-            epoch_loss += batch_loss.item()
+            epoch_loss += batch_loss.item() / len(y)
 
             print(f'Epoch - {epoch + 1} / {num_epochs} - :\tEnd of Batch\t--'
                   + f' {batch_num + 1} / {num_train_batches} ---')
@@ -203,7 +214,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                 y_val_hat = model(X_val)
 
                 # calc loss
-                val_loss += loss_func(y_val_hat.squeeze(), y_val).item()
+                val_batch_loss = loss_func(y_val_hat.squeeze(), y_val).item()
+                val_loss += val_batch_loss / len(y_val)
                 counter += 1
 
         # store validation loss

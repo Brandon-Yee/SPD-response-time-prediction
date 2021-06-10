@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from model import NN
+from linear_model import LinearModel
 import torch
 import torch.nn as nn
 import torch.optim as opt
@@ -10,7 +11,6 @@ from data_analysis import load_data
 import FeatureExtractor as feat
 import pickle
 from datetime import datetime
-
 
 
 NUM_MODELS_TO_TRAIN = 1
@@ -41,7 +41,8 @@ def main():
     # create feature extractor here
     w2v_path = 'c:/Users/mrhoa/Documents/Education/ee511/project/' \
         + 'article-publisher-classifier/GoogleNews-vectors-negative300.bin'
-    feat_extractor = feat.FeatureExtractor(from_file='embed_dict.pickle')
+    feat_extractor = feat.FeatureExtractor(word2vec_path=w2v_path,
+                                           from_file='embed_dict_2021-06-05.pickle')
 
     # run get_embeddings for location features and call type features
     #feat_extractor.get_embeddings(whole_df, feat.LOC_FEATURES, 'one-hot')
@@ -52,9 +53,12 @@ def main():
     val_dataset = SPDCallDataset(parts['val'], FILE_PATH, feat_extractor)
     test_dataset = SPDCallDataset(parts['test'], FILE_PATH, feat_extractor)
 
-    # establish lists of potential hyperparameter values
+    print(f"Length of training dataset: {len(train_dataset)}")
+    print(f"Length of validation dataset: {len(val_dataset)}")
 
-    epochs = [4, 6, 8, 10]  ######## uncomment <- this line
+    # establish lists of potential hyperparameter values
+    return None
+    epochs = [30]  ######## uncomment <- this line
 
 
     # epochs = [1, 2, 3]  ################## remove this line (for debugging)
@@ -95,6 +99,7 @@ def main():
 
     # timing info
     end = pd.to_datetime(datetime.now())
+
     print(f"Script started at {start}\n\tand ended at {end}")
     print(f"Duration: {end - start}")
 
@@ -131,7 +136,9 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
     if train_batch_size == 500:
         num_workers = 4
     elif train_batch_size == 200:
-        num_workers = 8
+        num_workers = 6
+
+    print(f"Number of workers: {num_workers}")
     # prep data
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=train_batch_size,
@@ -144,6 +151,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                                              shuffle=False)
 
     num_train_batches = len(train_loader)
+    print(f"training batch size: {train_batch_size}")
     print(f"number of training batches in one epoch: {num_train_batches}")
 
     # define model
@@ -184,6 +192,8 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
 
             # calc loss
             batch_loss = loss_func(y_hat.squeeze(), y.float())
+            print(f"batch number: {batch_num}")
+            print(f"batch loss: {batch_loss.item()}")
 
             # back prop
             batch_loss.backward()
@@ -194,10 +204,11 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
             epoch_loss += batch_loss.item() / len(y)
 
             print(f'Epoch - {epoch + 1} / {num_epochs} - :\tEnd of Batch\t--'
-                  + f' {batch_num + 1} / {num_train_batches} ---')
+                  + f' {batch_num + 1} / {num_train_batches} ---\tBatch loss:'
+                  + f' {batch_loss.item()}')
 
         # store loss for the epoch
-        loss_list[epoch] = epoch_loss
+        loss_list[epoch] = epoch_loss / (batch_num + 1)
         print(f"End of Epoch\t{epoch + 1} -----------")
         print(f"Training Loss:\t\t{epoch_loss}")
 
@@ -205,9 +216,9 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
         model.eval()
         val_loss = 0
         with torch.no_grad():
-            counter = 1
+            counter = 0
             for X_val, y_val in val_loader:
-                print(f"Starting validation batch {counter} of",
+                print(f"Starting validation batch {counter + 1} of",
                       f"{len(val_loader)}")
                 X_val, y_val = X_val.to(device), y_val.to(device)
                 # predict
@@ -219,7 +230,7 @@ def train_model(num_epochs, train_batch_size, learning_rate, optimizer, decay,
                 counter += 1
 
         # store validation loss
-        val_loss_list[epoch] = val_loss
+        val_loss_list[epoch] = val_loss / counter
         print(f"\tValidation loss:\t{val_loss}")
         print()
 

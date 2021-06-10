@@ -18,7 +18,10 @@ def main():
     sns.set()
     beats = gpd.read_file(r'data/geo/Seattle_Police_Beats_2018-Present.shp')
     data_2018 = load_data(r'data/Call_Data_2018.csv')
-    return data_2018
+    #plot_hist_tgt(data_2018)
+    plot_topX_init_type(data_2018)
+    #calls_over_time(data_2018)
+    plt.show()
 
 
 class SPDCallDataset(torch.utils.data.Dataset):
@@ -56,6 +59,8 @@ class SPDCallDataset(torch.utils.data.Dataset):
         self.y = data_2018.loc[idxs, 'response_time'].copy()
         data_2018.drop(columns='response_time', inplace=True)
         self.data = data_2018.loc[idxs, :].copy()
+        self.mu = self.y.mean()
+        self.sigma = self.y.std()
 
     def __getitem__(self, idx):
         """
@@ -69,7 +74,7 @@ class SPDCallDataset(torch.utils.data.Dataset):
             the 1-index of the tuple.
         """
         X = self.feat_extractor.transform(self.data.iloc[idx])
-        return X, self.y.iloc[idx]
+        return X, (self.y.iloc[idx] - self.mu) / self.sigma
 
     def __len__(self):
         """
@@ -167,7 +172,7 @@ def create_data(file_path):
     return data_2018
 
 
-def plot_beats(beats, data):
+def plot_beats(data):
     """
     There are 5 precincts, each with a police station:
     1. North
@@ -251,17 +256,27 @@ def plot_hist_init_type(data):
     return ax
 
 
-def plot_top50_init_type(data):
-    fig, ax = plt.subplots(1, figsize=(18, 6))
+def plot_hist_tgt(data):
+    data.loc[:, 'response_time'] /= 60
+    data = data[data['response_time'] > 0]
+    fig, ax = plt.subplots(1)
+    sns.histplot(data['response_time'], ax=ax)
+    plt.title('Histogram of response time (only values greater than 0)')
+    plt.xlabel('Response Time in Minutes')
+    return ax
+
+
+def plot_topX_init_type(data, x=10):
+    fig, ax = plt.subplots(1, figsize=(10, 6))
     grouped = data.groupby('Initial Call Type')['Initial Call Type'].count()
-    top_50 = grouped.nlargest(50)
-    sns.barplot(x=top_50.index, y=top_50)
-    plt.xticks(rotation=30, ha='right', fontsize=6)
-    plt.title('Number of calls by Initial Call Type (only top 50 shown)')
+    top_x = grouped.nlargest(x)
+    sns.barplot(x=top_x.index, y=top_x)
+    plt.xticks(rotation=30, ha='right', fontsize=8)
+    plt.title(f'Number of calls by Initial Call Type (only top {x} shown)')
     plt.subplots_adjust(bottom=0.35)
 
 
-def calls_over_time(data, n=25):
+def calls_over_time(data, n=10):
     fig, ax = plt.subplots(1, figsize=(15, 8))
     grouped = data.groupby('Initial Call Type')['Initial Call Type'].count()
     top_n = grouped.nlargest(n)
@@ -270,14 +285,13 @@ def calls_over_time(data, n=25):
         resamp = data_sub.resample('W', on='Original Time Queued')['Initial Call Type'].count()
         sns.lineplot(data=resamp, label=call_type, ax=ax)
     plt.grid(which='minor', axis='x')
-    plt.xlim((pd.Timestamp(year=2016, month=8, day=1), pd.Timestamp(year=2021, month=7, day=1)))
+    plt.xlim(right=pd.Timestamp(year=2021, month=8, day=1))
     plt.xticks(rotation=30, ha='right')
-    plt.legend(loc='upper left', fontsize=8)
+    plt.legend(loc='upper right', fontsize=9)
     plt.xlabel('Time')
     plt.ylabel('Weekly Count of Call Type')
     plt.title('Weekly Count of Call Type over Time')
 
 
 if __name__ == '__main__':
-    #data_2018 = main()
-    pass
+    main()

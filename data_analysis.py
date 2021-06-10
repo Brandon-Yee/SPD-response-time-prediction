@@ -74,7 +74,8 @@ class SPDCallDataset(torch.utils.data.Dataset):
             the 1-index of the tuple.
         """
         X = self.feat_extractor.transform(self.data.iloc[idx])
-        return X, (self.y.iloc[idx] - self.mu) / self.sigma
+
+        return X, (self.y.iloc[idx]-self.mu) / self.sigma
 
     def __len__(self):
         """

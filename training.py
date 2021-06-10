@@ -60,7 +60,6 @@ def main():
     return None
     epochs = [30]  ######## uncomment <- this line
 
-
     # epochs = [1, 2, 3]  ################## remove this line (for debugging)
 
     learning_rates = [0.001, 0.01, 0.1]
@@ -70,6 +69,11 @@ def main():
     num_hidden_layers = [2, 3, 4, 5, 6]
     num_nodes = [50, 100, 200, 250]
     # add other hyperparams if needed
+    epochs = [2]
+    learning_rates = [0.01]
+    batch_sizes = [500]
+    optims = [opt.Adam]
+    decays = [0]
 
     # train a bunch of models
     for i in range(NUM_MODELS_TO_TRAIN):
@@ -85,6 +89,7 @@ def main():
         for j in range(num_h):
             nodes.append(num_nodes[rng.integers(len(num_nodes))])
 
+        nodes = [D, 1000, 800, 400, 200]
         print(f'Starting model # {i + 1} out of {NUM_MODELS_TO_TRAIN} -------')
         # train each model
         models.append(train_model(ep, bs, lr, opti, decay, nodes,
